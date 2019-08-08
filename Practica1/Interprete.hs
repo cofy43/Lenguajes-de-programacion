@@ -1,5 +1,4 @@
 -- Declaracion de los tipos para el interprete
-
 data Instruction = N Int 
                  | Verdadero
                  | Falso
@@ -16,7 +15,7 @@ data Instruction = N Int
                  | SER
                  | SOB
                  | SOLAP
-                 | E [Instruction]
+                 | ES [Instruction]
                  deriving (Eq,Ord)
 -- Defición de los tipos para el interprete
 type Program = [Instruction]
@@ -65,10 +64,11 @@ popOperation :: Stack -> Instruction
 popOperation []  = error "El stack se encuentra vacia"
 popOperation [x] = x
 popOperation (x:xs) = x
- 
 
-{- selOperation :: Stack -> Stack
-selOperation [] = error "El stack se encuentra vacia"
+swapOperation :: Stack -> Stack
+swapOperation (x:y:ys) = (y:x:ys)
+
+selOperation :: Stack -> Stack
 selOperation (x:y:ys)
-        | (x == 0)  = [y]
-        | otherwise = (ys) -}
+        | x == (N 0)  = [y]
+        | otherwise = (ys)

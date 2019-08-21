@@ -1,8 +1,8 @@
 data Expr = N Int 
           | T | F
           | Succ Expr | Pred Expr
-          | Expr :+ Expr | Expr :− Expr
-          | Expr :∗ Expr | Expr :/ Expr | Expr :% Expr
+          | Expr :+ Expr | Expr :- Expr
+          | Expr :* Expr | Expr :/ Expr | Expr :% Expr
           | Not Expr | Expr :& Expr | Expr :| Expr
           | Expr :> Expr | Expr :< Expr | Expr := Expr
           | Expr :^ Expr
@@ -16,6 +16,8 @@ data Instruction = I Int | B Bool
 
 type Stack = [Instruction]
 
+type Program = [Instruction]
+
 instance Show Expr where
           show (N n) = show n
           show T = show "True"
@@ -24,6 +26,22 @@ instance Show Expr where
 instance Show Instruction where
           show (I i) = "I " ++ show i
           show (B b) = "B " ++ show b
+          show (ADD) = "ADD"
+          show (AND) = "AND"
+          show (DIV) = "DIV"
+          show (Eq) = "Eq"
+          show (EXEC) = "EXEC"
+          show (GET) = "GET"
+          show (Gt) = "Gt"
+          show (Lt) = "Lt"
+          show (MUL) = "MUL"
+          show (NOT) = "NOT"
+          show (POP) = "POP"
+          show (REM) = "REM"
+          show (SEL) = "SEL"
+          show (SUB) = "SUB"
+          show (SWAP) = "SWAP"
+          show (ES (xs)) = "ES" ++ show xs
 
 arithOperation :: Instruction -> Instruction -> Instruction -> Instruction
 arithOperation (I x) (I y) ADD = (I (x + y))
@@ -58,7 +76,34 @@ stackOperation ((I n):xs) GET
         | (n > 1 && n < length xs) = (xs !! (n - 1)):xs
         | otherwise = error "Estimado usuario, no hay suficientes elementos en el Stack"
 stackOperation ((I n):y:z:zs) SEL
-                | (n == 0) = y:zs
+                | (n > 0) = y:zs
                 | length ((I n):y:z:zs) < 3 = error "No se puede CRAKC 404 not found"
                 | otherwise = z:zs
-stackOperation 
+                
+compile :: Expr -> Program
+compile (N a) = [(I a)]
+compile T = [(B True)]
+compile F = [(B False)]
+compile (Succ (N a)) = [(I a), (I 1), ADD]
+compile (Pred (N a)) = [(I a), (I 1), SUB]
+compile (a :+ b) = (compile a) ++ (compile b) ++ [ADD]
+compile (a :- b) = (compile a) ++ (compile b) ++ [SUB]
+compile (a :* b) = (compile a) ++ (compile b) ++ [MUL]
+compile (a :/ b) = (compile a) ++ (compile b) ++ [DIV]
+compile (a :% b) = (compile a) ++ (compile b) ++ [REM]
+compile (Not a) = (compile a) ++ [NOT]
+compile (a :& b) = (compile a) ++ (compile b) ++ [AND]
+compile (a :| b) = [NOT] ++ (compile a) ++ [NOT] ++ (compile b) ++ [AND] ++ [NOT]
+compile (a :> b) = (compile a) ++ (compile b) ++ [Gt]
+compile (a :< b) = (compile a) ++ (compile b) ++ [Lt]
+compile (a := b) = (compile a) ++ (compile b) ++ [Eq]
+compile (a :^ b) = (compile a) ++ (compile b) ++ [Eq] ++ [NOT]
+compile (Max a b) = (compile a) ++ (compile b) ++ (compile a) ++ (compile b) ++ [Gt] ++ [SEL]
+compile (Min a b) = (compile a) ++ (compile b) ++ (compile a) ++ (compile b) ++ [Lt] ++ [SEL]
+compile (Fact (N a)) = [ES (factAux (N a))]
+
+
+factAux :: Expr -> Program
+factAux (N 0) = [(I 1)]
+factAux (N 1) = [(I 1)]
+factAux (N n) = (factAux (N (n-1))) ++ [(I n)] ++ [MUL]

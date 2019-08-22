@@ -10,12 +10,11 @@ data Expr = N Int
           | Fact Expr
 
 data Instruction = I Int | B Bool
-          | ADD | AND | DIV | Eq | EXEC | GET| Gt
+          | ADD | AND | DIV | Eq | EXEC | GET | Gt
           | Lt | MUL | NOT | POP | REM | SEL | SUB 
           | SWAP | ES [Instruction]
 
 type Stack = [Instruction]
-
 type Program = [Instruction]
 
 instance Show Expr where
@@ -45,9 +44,13 @@ instance Show Instruction where
 
 arithOperation :: Instruction -> Instruction -> Instruction -> Instruction
 arithOperation (I x) (I y) ADD = (I (x + y))
-arithOperation (I x) (I y) DIV = (I (div x y))
 arithOperation (I x) (I y) MUL = (I (x * y))
-arithOperation (I x) (I y) REM = (I (rem x y))
+arithOperation (I x) (I y) DIV 
+        | (y == 0) = error "División por cero"
+        | otherwise = (I (div x y))
+arithOperation (I x) (I y) REM 
+        | (y == 0) = error "Division por cero" 
+        | otherwise = (I (rem x y))
 arithOperation (I x) (I y) SUB = (I (x - y))
 arithOperation x y z = error "Estimado usuario los parametros no son validos"
 
@@ -67,9 +70,9 @@ relOperation a b c = error "Estimado usuario los parametros no son validos"
 
 stackOperation :: Stack -> Instruction -> Stack
 stackOperation (x:y:xs) SWAP 
-        |length(x:y:xs) > 2 = (y:x:xs)
+        | length(x:y:xs) >= 2 = (y:x:xs)
         | otherwise = error "Estmado usuario, no hay suficientes elementos en el Stack"
-stackOperation (x:xs) (ES (y:ys)) = [ES (y:ys)] ++ (x:xs)
+stackOperation xs (ES (ys)) = [ES (ys)] ++ xs
 stackOperation (x:xs) POP = (xs)
 stackOperation [] POP = error "Estimado usuario, el Stack se encuentra vacio"
 stackOperation ((I n):xs) GET
@@ -100,10 +103,40 @@ compile (a := b) = (compile a) ++ (compile b) ++ [Eq]
 compile (a :^ b) = (compile a) ++ (compile b) ++ [Eq] ++ [NOT]
 compile (Max a b) = (compile a) ++ (compile b) ++ (compile a) ++ (compile b) ++ [Gt] ++ [SEL]
 compile (Min a b) = (compile a) ++ (compile b) ++ (compile a) ++ (compile b) ++ [Lt] ++ [SEL]
-compile (Fact (N a)) = [ES (factAux (N a))]
+
+execOperation :: [Instruction] -> Stack -> Instruction -> ([Instruction], Stack)
+execOperation xs ((ES (ys)):zs) EXEC = ((ys ++ xs), zs)
+execOperation xs (y:ys) EXEC = error "Sólo se pueden ejecutar secuencias de comandos"
+execOperation xs [] EXEC = error "La pila está vacía"
+
+executeProgram :: Program -> Stack -> Stack
+executeProgram [] s = s
+executeProgram ((I n):xs) s = executeProgram xs ((I n):s)
+executeProgram ((B b):xs) s = executeProgram xs ((B b):s)
+executeProgram (ADD:xs) ((I n):(I m):ys) = executeProgram xs ((arithOperation (I n) (I m) ADD):ys)
+executeProgram (MUL:xs) ((I n):(I m):ys) = executeProgram xs ((arithOperation (I n) (I m) MUL):ys)
+executeProgram (DIV:xs) ((I n):(I m):ys) = executeProgram xs ((arithOperation (I n) (I m) DIV):ys)
+executeProgram (SUB:xs) ((I n):(I m):ys) = executeProgram xs ((arithOperation (I n) (I m) SUB):ys)
+executeProgram (REM:xs) ((I n):(I m):ys) = executeProgram xs ((arithOperation (I n) (I m) REM):ys)
+
+executeProgram (AND:xs) ((B p):(B q):ys) = executeProgram xs ((bboolOperation (B p) (B q) AND):ys)
+executeProgram (NOT:xs) ((B p):ys) = executeProgram xs ((uboolOperation (B p) NOT):ys)
+
+executeProgram (Gt:xs) ((I n):(I m):ys) = executeProgram xs ((relOperation (I n) (I m) Gt):ys)
+executeProgram (Lt:xs) ((I n):(I m):ys) = executeProgram xs ((relOperation (I n) (I m) Lt):ys)
+executeProgram (Eq:xs) ((I n):(I m):ys) = executeProgram xs ((relOperation (I n) (I m) Eq):ys)
+
+executeProgram (SWAP:xs) s = executeProgram xs (stackOperation s SWAP)
+executeProgram ((ES xs):ys) s = executeProgram ys (stackOperation s (ES xs))
+executeProgram (POP:xs) s = executeProgram xs (stackOperation s POP)
+executeProgram (GET:xs) s = executeProgram xs (stackOperation s GET)
+executeProgram (SEL:xs) s = executeProgram xs (stackOperation s SEL)
+
+executeProgram (EXEC:xs) s = executeProgram (fst x) (snd x) where x = (execOperation xs s EXEC)
 
 
-factAux :: Expr -> Program
-factAux (N 0) = [(I 1)]
-factAux (N 1) = [(I 1)]
-factAux (N n) = (factAux (N (n-1))) ++ [(I n)] ++ [MUL]
+execute :: Expr -> Instruction
+execute e = case (executeProgram (compile e) []) of {
+        [] -> error "Ocurrió un error";
+        (x:xs) -> x;
+}

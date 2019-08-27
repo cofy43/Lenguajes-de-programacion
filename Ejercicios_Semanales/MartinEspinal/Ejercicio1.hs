@@ -60,7 +60,6 @@ frVars (Or a b) = (listVar a b)
 frVars (Lt a b) = (listVar a b)
 frVars (Gt a b) = (listVar a b)
 frVars (Eq a b) = (listVar a b)
---Falta resolver problema con if y agregar terminar Let
 frVars (If a b c) = filtroA ++ filtroB ++ filtroC
     where listC = filter (\x -> (esVar x)) [c]
           listA = filter (\x -> (esVar x)) [a]
@@ -68,37 +67,50 @@ frVars (If a b c) = filtroA ++ filtroB ++ filtroC
           filtroA = [x | x <- listA,  not(x `elem` listB), not(x `elem` listC)]
           filtroB = [x | x <- listB,  not(x `elem` listA), not(x `elem` listC)]
           filtroC = [x | x <- listC,  not(x `elem` listB), not(x `elem` listA)]
-{- frVars (Let v a b) = [x | x <- lista, not(v `elem` lista)]
-    where lista = (listVar a b) -}
+frVars (Let v a b) = [x | x <- lista, not((V v) `elem` lista)]
+    where lista = (listVar a b)
 
-subs :: Expr -> Subtitution -> Expr
-subs (V v) (a, b)
+subst :: Expr -> Subtitution -> Expr
+subst (V v) (a, b)
     | (v == a) = b
-    --Falta cachar errores 
-    | otherwise = (V v)
-subs (I n) (a, b) = (I n)
-subs (B True) (a, b) = (B True)
-subs (B False) (a, b) = (B False)
-subs (Add n m) (a, b) = (Add (subs n (a, b)) (subs m (a, b)))
-subs (Mul n m) (a, b) = (Mul (subs n (a,b)) (subs m (a,b)))
-subs (Succ n) (a, b) = (Succ (subs n (a, b)))
-subs (Pred n) (a, b) = (Pred (subs n (a, b)))
-subs (Not n) (a, b) = (Not (subs n (a, b)))
-subs (And n m) (a, b) = (And (subs n (a, b)) (subs m (a,b))) 
-subs (Or n m) (a, b) = (Or (subs n (a, b)) (subs m (a, b)))
-subs (Lt n m) (a, b) = (Lt (subs n (a, b)) (subs m (a, b)))
-subs (Gt n m) (a, b) = (Gt (subs n (a, b)) (subs m (a, b)))
-subs (Eq n m) (a, b) = (Eq (subs n (a, b)) (subs m (a, b)))
-subs (If v n m) (a, b) = (If (subs v (a, b)) (subs n (a,b)) (subs m (a,b)))
---Falta caso Let
---subs (Let v n m) (a, b) = (Let (subs v (a, b)) (subs n (a, b)) (subs m (a, b))) 
+subst (I n) (a, b) = (I n)
+subst (B True) (a, b) = (B True)
+subst (B False) (a, b) = (B False)
+subst (Add n m) (a, b) = (Add (subst n (a, b)) (subst m (a, b)))
+subst (Mul n m) (a, b) = (Mul (subst n (a,b)) (subst m (a,b)))
+subst (Succ n) (a, b) = (Succ (subst n (a, b)))
+subst (Pred n) (a, b) = (Pred (subst n (a, b)))
+subst (Not n) (a, b) = (Not (subst n (a, b)))
+subst (And n m) (a, b) = (And (subst n (a, b)) (subst m (a,b))) 
+subst (Or n m) (a, b) = (Or (subst n (a, b)) (subst m (a, b)))
+subst (Lt n m) (a, b) = (Lt (subst n (a, b)) (subst m (a, b)))
+subst (Gt n m) (a, b) = (Gt (subst n (a, b)) (subst m (a, b)))
+subst (Eq n m) (a, b) = (Eq (subst n (a, b)) (subst m (a, b)))
+subst (If v n m) (a, b) = (If (subst v (a, b)) (subst n (a,b)) (subst m (a,b)))
+subst (Let v n m) (a, b) = (Let v (subst n (a, b)) (subst m (a, b))) 
 
-{- alphaEq :: Expr -> Expr -> Bool
-alphaEq a b 
-    | ((length exprA) == (length exprB)) = True
+alphaEq :: Expr -> Expr -> Bool
+alphaEq (V v) (V b)
+    | (v == b) = True
     | otherwise = False
-    where exprA = (frVars a)
-          exprB = (frVars b)
- -}
-
---alphaEq ( Let "x" ( I 1 ) (V "x" ) ) ( Let "y" (I 1 ) (V "y" ))
+alphaEq (I n) (I m)
+    | (n == m) = True
+    | otherwise = False
+alphaEq (B True) (B True) = True
+alphaEq (B False) (B False) = True
+alphaEq (B True) (B False) = False
+alphaEq (B False) (B True) = False
+alphaEq (Add a b) (Add c d) = (alphaEq a c) && (alphaEq b d)
+alphaEq (Mul a b) (Mul c d) = (alphaEq a c) && (alphaEq b d)
+alphaEq (Succ a) (Succ b) = (alphaEq a b)
+alphaEq (Pred a) (Pred b) = (alphaEq a b)
+alphaEq (Not a) (Not b) = (alphaEq a b)
+alphaEq (Add a b) (Add c d) = (alphaEq a c) && (alphaEq b d)
+alphaEq (Or a b) (Or c d) = (alphaEq a c) && (alphaEq b d)
+alphaEq (Lt a b) (Lt c d) = (alphaEq a c) && (alphaEq b d)
+alphaEq (Gt a b) (Gt c d) = (alphaEq a c) && (alphaEq b d)
+alphaEq (Let v a b) (Let g c d)
+    | ((length listA) /= (length listB)) = False
+    | otherwise = (alphaEq a c) && (alphaEq b (subst d (v, a)))
+    where listA = ((frVars a) ++ (frVars b))
+          listB = ((frVars c) ++ (frVars d))

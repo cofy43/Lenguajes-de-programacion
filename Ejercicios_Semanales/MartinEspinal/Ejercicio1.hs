@@ -29,11 +29,10 @@ instance Show Expr where
         (Not n) -> "NOT[" ++ (show n) ++ "]"
         (And a b) -> "ADN[" ++ (show a) ++ " && " ++ (show b) ++ "]"
         (Or a b) -> "OR[" ++ (show a) ++ " || " ++ (show b) ++ "]" 
-        (Lt a b) -> "LT[" ++ (show a) ++ " > " ++ (show b) ++ "]"
-        (Gt a b) -> "Gt[" ++ (show a) ++ " < " ++ (show b) ++ "]"
+        (Lt a b) -> "LT[" ++ (show a) ++ " < " ++ (show b) ++ "]"
+        (Gt a b) -> "Gt[" ++ (show a) ++ " > " ++ (show b) ++ "]"
         (Eq a b) -> "EQ[" ++ (show a) ++ " = " ++ (show b) ++ "]"
         (If a b c) -> "IF[" ++ (show a) ++ " then " ++ (show b) ++ " else " ++ (show c) ++ "]"
-        --(Let v a b) -> "Let[" ++ (show v) ++ " " ++ (show a) ++ " " + (show b) ++ "]"
         
 esVar :: Expr -> Bool
 esVar (V a) = True
@@ -73,6 +72,7 @@ frVars (Let v a b) = [x | x <- lista, not((V v) `elem` lista)]
 subst :: Expr -> Subtitution -> Expr
 subst (V v) (a, b)
     | (v == a) = b
+    | otherwise = (V v)
 subst (I n) (a, b) = (I n)
 subst (B True) (a, b) = (B True)
 subst (B False) (a, b) = (B False)
@@ -87,12 +87,16 @@ subst (Lt n m) (a, b) = (Lt (subst n (a, b)) (subst m (a, b)))
 subst (Gt n m) (a, b) = (Gt (subst n (a, b)) (subst m (a, b)))
 subst (Eq n m) (a, b) = (Eq (subst n (a, b)) (subst m (a, b)))
 subst (If v n m) (a, b) = (If (subst v (a, b)) (subst n (a,b)) (subst m (a,b)))
-subst (Let v n m) (a, b) = (Let v (subst n (a, b)) (subst m (a, b))) 
+subst (Let v n m) (a, b)
+    | (not ((V a) `elem` listaN)) && (not ((V a) `elem` listaM)) = error "Could not apply the substitution"
+    | otherwise = (Let v (subst n (a,b)) (subst m (a, b)))
+    where listaN = (frVars n)
+          listaM = (frVars m)
 
 alphaEq :: Expr -> Expr -> Bool
 alphaEq (V v) (V b)
     | (v == b) = True
-    | otherwise = False
+    | otherwise = Fals
 alphaEq (I n) (I m)
     | (n == m) = True
     | otherwise = False
@@ -105,7 +109,6 @@ alphaEq (Mul a b) (Mul c d) = (alphaEq a c) && (alphaEq b d)
 alphaEq (Succ a) (Succ b) = (alphaEq a b)
 alphaEq (Pred a) (Pred b) = (alphaEq a b)
 alphaEq (Not a) (Not b) = (alphaEq a b)
-alphaEq (Add a b) (Add c d) = (alphaEq a c) && (alphaEq b d)
 alphaEq (Or a b) (Or c d) = (alphaEq a c) && (alphaEq b d)
 alphaEq (Lt a b) (Lt c d) = (alphaEq a c) && (alphaEq b d)
 alphaEq (Gt a b) (Gt c d) = (alphaEq a c) && (alphaEq b d)

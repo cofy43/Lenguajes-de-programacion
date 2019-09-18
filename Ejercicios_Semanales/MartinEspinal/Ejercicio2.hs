@@ -43,9 +43,24 @@ subst (L a e) (id, e1)
     | otherwise = (subst alphaEquivalencia (id, e1))
     where alphaEquivalencia = (alphaExpr (L a e))
 subst (App e1 e2) (id, e3) = (App (subst (e1) (id, e3)) (subst (e2) (id, e3)) )
-
+--
 beta :: Expr -> Expr
 beta (V x) = (V x)
---beta (L id e) =
+beta (L id e) = (L id (beta e))
+beta (App (L id e) e1) = (subst e (id ,beta (e1)))
+beta (App e1 e2) = (App (beta e1) (beta e2))
 
---be t a (App (L ”x” (App (V ”x” ) (V ”y” ) ) ) (L ” z ” (V ” z ” ) ) )
+normal :: Expr -> Bool 
+normal (V x) = True
+normal (App (V x) (V y)) = False
+normal (L id e) = (normal e)
+normal (App e2 e1) = False
+
+eval :: Expr -> Expr
+eval (V x) = (V x)
+eval (L id x) = (L id x)
+eval (App (V x) (V y)) = (App (V x) (V y))
+eval (App (L id e) e1) = (subst e (id ,eval (e1)))
+eval (App e1 e2) = (App (eval e1) (eval e2))
+
+--eval (App (L "n" (L "s" (L "z" (App (V "s") (App (App (V "n" ) (V "s" ) ) (V "z" ) ) ) ) ) ) (L "s" (L "z" (V "z" ) ) ) )
